@@ -5,11 +5,16 @@
 #include <boost/asio.hpp>
 #include <string>
 
+constexpr int maxInputBufferLength{1024};
+std::string epicsProtocolTerminator{"X"};
 using boost::asio::ip::tcp;
 
 struct session
    : public std::enable_shared_from_this<session>
 {
+    using command_t = std::string;
+
+
 public: 
 	session(tcp::socket socket)
 		: socket_(std::move(socket))
@@ -23,24 +28,35 @@ public:
 private:
 	void do_read(){
 		auto self(shared_from_this());
-		socket_.async_read_some(boost::asio::buffer(data_, max_length),
+		socket_.async_read_some(boost::asio::buffer(data_, maxInputBufferLength),
 				[this, self](boost::system::error_code ec, std::size_t length)
 		
 		{
-			if(check1.compare(data_)){
+		    makeCommandFromEpicsProtocol(data_);
+		    std::string inputString{data_};
+		    inputString.erase(inputString.find(epicsProtocolTerminator));
+		    std::cout << inputString << std::endl << check1;
+			if(0==check1.compare(inputString)){
+			    std::cout << check1.compare(inputString) << std::endl;
 				std::cout << "Check 1 triggered by String\n";
 			}
-            else if(check2.compare(data_)){
+            else if(0==check2.compare(inputString)){
                 std::cout << "Check 2 triggered by String\n";
             }
-            else if(check3.compare(data_)){
-                std::cout << "Check 3 triggered by String\n";
-            }
-			std::cout << data_ << " " << max_length << " " << length << "\n";
+
 			if(!ec){
 				acknowledge("Roger that\n");
 			}
 		});
+	}
+
+	command_t makeCommandFromEpicsProtocol(const char* inputData){
+        std::string inputString{inputData};
+        return command_t{inputString.erase(inputString.find(epicsProtocolTerminator))};
+	}
+
+	void actOutCommand(command_t command){
+
 	}
 
 	void acknowledge(std::string ackmessage){
@@ -64,13 +80,25 @@ private:
 			}
 		});
 	}
+/*
+	class command_t{
+    public:
+	    command_t(const char* inputData){
+            std::string inputString{data_};
+            action{inputString.erase(inputString.find(epicsProtocolTerminator))};
+	    }
+
+    private:
+	    std::string action;
+	    int_fast8_t value{};
+	};*/
 
 	tcp::socket socket_;
-	enum {max_length = 1024};
-	char data_[max_length];
+	//enum {max_length = 1024};
+	char data_[maxInputBufferLength];
 	std::string check1{"eintauchen"};
     std::string check2{"herausfahren"};
-    std::string check3{"fahre auf position: 30%"};
+    //std::string check3{"fahre auf position: 30%"};
 };
 
 class server{
@@ -100,11 +128,12 @@ private:
 };
 
 int main(int argc, char* argv[]){
-	try{
-		if(argc != 2){
-			std::cerr << "Usage: asioLSMserver <port> \n";
-			return 22; //EINVAL: Invalid Arguments errno
-		}
+    if(argc != 2){
+        std::cerr << "Usage: asioLSMserver <port> \n";
+        return 22; //EINVAL: Invalid Arguments errno
+    }
+
+    try{
 		boost::asio::io_context io_context;
 
 		server s(io_context, std::atoi(argv[1]));
