@@ -4,6 +4,7 @@
 #include <utility>
 #include <boost/asio.hpp>
 #include <string>
+#include <array>
 
 constexpr int maxInputBufferLength{1024};
 std::string epicsProtocolTerminator{"X"};
@@ -28,7 +29,7 @@ public:
 private:
 	void do_read(){
 		auto self(shared_from_this());
-		socket_.async_read(boost::asio::buffer(data_, maxInputBufferLength),
+		socket_.async_read(boost::asio::buffer(data_),
 				[this, self](boost::system::error_code ec, std::size_t length)
 		
 		{
@@ -95,7 +96,7 @@ private:
 
 	tcp::socket socket_;
 	//enum {max_length = 1024};
-	char data_[maxInputBufferLength];
+	std::array<char, maxInputBufferLength> data_;
 	std::string check1{"eintauchen"};
     std::string check2{"herausfahren"};
     //std::string check3{"fahre auf position: 30%"};
