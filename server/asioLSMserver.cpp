@@ -28,12 +28,12 @@ public:
 private:
 	void do_read(){
 		auto self(shared_from_this());
-		socket_.async_read_some(boost::asio::buffer(data_, maxInputBufferLength),
+		socket_.async_read(boost::asio::buffer(data_, maxInputBufferLength),
 				[this, self](boost::system::error_code ec, std::size_t length)
 		
 		{
 		    makeCommandFromEpicsProtocol(data_);
-		    std::string inputString{data_};
+		    std::string inputString{data_,length};
 		    inputString.erase(inputString.find(epicsProtocolTerminator));
 		    std::cout << inputString << std::endl << check1;
 			if(0==check1.compare(inputString)){
@@ -51,7 +51,7 @@ private:
 	}
 
 	command_t makeCommandFromEpicsProtocol(const char* inputData){
-        std::string inputString{inputData};
+        std::string inputString{inputData,length};
         return command_t{inputString.erase(inputString.find(epicsProtocolTerminator))};
 	}
 
@@ -84,7 +84,7 @@ private:
 	class command_t{
     public:
 	    command_t(const char* inputData){
-            std::string inputString{data_};
+            std::string inputString{data_,length};
             action{inputString.erase(inputString.find(epicsProtocolTerminator))};
 	    }
 
